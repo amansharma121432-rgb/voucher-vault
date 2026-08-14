@@ -1,0 +1,582 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voucher Vault - Best Deals & Gift Cards</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --primary-blue: #3b82f6;
+      --accent-glow: rgba(59, 130, 246, 0.15);
+    }
+    body {
+      background-color: var(--bg-dark);
+      color: #f8fafc;
+      font-family: system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+    }
+    .navbar {
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--card-border);
+    }
+    .hero-banner {
+      background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 30px;
+      margin-top: 20px;
+    }
+    .search-input, .form-control-dark {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--card-border);
+      color: #fff;
+      border-radius: 12px;
+      padding: 10px 16px;
+    }
+    .search-input:focus, .form-control-dark:focus {
+      background: rgba(15, 23, 42, 0.9);
+      color: #fff;
+      border-color: var(--primary-blue);
+      box-shadow: 0 0 0 2px var(--accent-glow);
+    }
+    .category-pill {
+      background: rgba(30, 41, 59, 0.8);
+      color: #94a3b8;
+      border: 1px solid var(--card-border);
+      border-radius: 25px;
+      padding: 8px 18px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .category-pill.active, .category-pill:hover {
+      background: var(--primary-blue);
+      color: white;
+      border-color: var(--primary-blue);
+    }
+    .voucher-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      backdrop-filter: blur(8px);
+      transition: transform 0.2s;
+    }
+    .voucher-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(59, 130, 246, 0.4);
+    }
+    .brand-logo {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      object-fit: cover;
+      background: white;
+      padding: 4px;
+    }
+    .btn-buy {
+      background: var(--primary-blue);
+      color: white;
+      border-radius: 10px;
+      font-weight: 600;
+      border: none;
+      padding: 8px 16px;
+    }
+    .modal-content {
+      background: #1e293b;
+      color: white;
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+    }
+    .order-item-box {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+    }
+    .qr-container {
+      background: white;
+      padding: 12px;
+      border-radius: 12px;
+      display: inline-block;
+    }
+    .voucher-unlocked-card {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(6, 78, 59, 0.3));
+      border: 1px solid #10b981;
+      border-radius: 16px;
+    }
+    .code-box {
+      background: #0f172a;
+      border: 1px dashed #10b981;
+      border-radius: 10px;
+      padding: 12px 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-dark sticky-top">
+    <div class="container d-flex justify-content-between align-items-center">
+      <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="#">
+        <span class="badge bg-primary px-2 py-1">VV</span> Voucher Vault
+      </a>
+      <div id="authNavContainer" class="d-flex align-items-center gap-2">
+        <button class="btn btn-outline-light btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#authModal">
+          <i class="fa-solid fa-user me-1"></i> Sign In / Sign Up
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container pb-5">
+    
+    <!-- Hero Banner -->
+    <div class="hero-banner my-4">
+      <div class="row align-items-center text-center text-md-start">
+        <div class="col-md-7 mb-3 mb-md-0">
+          <h3 class="fw-bold mb-2">⚡ Now Easily Retrieve Your Voucher</h3>
+          <p class="text-secondary small mb-3">Enter your Order ID to retrieve your purchased voucher details instantly.</p>
+          <div class="d-flex gap-4 justify-content-center justify-content-md-start">
+            <div><h5 class="fw-bold mb-0 text-white">27</h5><small class="text-secondary small">Active Coupons</small></div>
+            <div><h5 class="fw-bold mb-0 text-primary">₹18.6M</h5><small class="text-secondary small">Total Saved</small></div>
+            <div><h5 class="fw-bold mb-0 text-info">36.4K</h5><small class="text-secondary small">Happy Customers</small></div>
+          </div>
+        </div>
+        <div class="col-md-5">
+          <div class="input-group">
+            <input type="text" id="utrInput" class="form-control search-input" placeholder="Search Order ID...">
+            <button class="btn btn-primary px-4 fw-bold" onclick="searchByUTR()"><i class="fa-solid fa-search"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Output Box -->
+    <div id="voucherModal" class="card voucher-unlocked-card mt-4 p-4 d-none mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold text-success mb-0"><i class="fa-solid fa-circle-check me-2"></i>Voucher Unlocked Successfully!</h5>
+        <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1">READY TO REDEEM</span>
+      </div>
+      <p class="text-secondary small mb-3">Order Reference ID: <span id="outOrderId" class="text-info font-monospace"></span></p>
+      
+      <div class="code-box d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+          <small class="text-secondary d-block">VOUCHER CODE</small>
+          <span id="outCode" class="fs-4 fw-bold text-warning font-monospace"></span>
+        </div>
+        <div id="pinContainer">
+          <small class="text-secondary d-block">PIN</small>
+          <span id="outPin" class="fs-4 fw-bold text-white font-monospace"></span>
+        </div>
+        <button class="btn btn-outline-success btn-sm" onclick="copyVoucherCode()"><i class="fa-solid fa-copy me-1"></i> Copy Code</button>
+      </div>
+    </div>
+
+    <!-- Categories -->
+    <div class="d-flex gap-2 overflow-auto pb-3 mb-4">
+      <span class="category-pill active" onclick="filterCategory('all', this)"><i class="fa-solid fa-ticket me-1"></i> All</span>
+      <span class="category-pill" onclick="filterCategory('food', this)"><i class="fa-solid fa-utensils me-1"></i> Food</span>
+      <span class="category-pill" onclick="filterCategory('travel', this)"><i class="fa-solid fa-plane me-1"></i> Travel</span>
+      <span class="category-pill" onclick="filterCategory('fashion', this)"><i class="fa-solid fa-shirt me-1"></i> Fashion</span>
+      <span class="category-pill" onclick="filterCategory('electronics', this)"><i class="fa-solid fa-laptop me-1"></i> Electronics</span>
+      <span class="category-pill" onclick="filterCategory('groceries', this)"><i class="fa-solid fa-cart-shopping me-1"></i> Groceries</span>
+    </div>
+
+    <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
+      <span class="text-danger"><i class="fa-solid fa-fire"></i></span> Available Vouchers
+    </h5>
+
+    <!-- Dynamic Grid -->
+    <div class="row g-3" id="productsGrid">
+      <div class="col-12 text-center text-secondary py-5">Loading available vouchers...</div>
+    </div>
+
+  </div>
+
+  <!-- UPI Payment Modal -->
+  <div class="modal fade" id="paymentModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content p-4 text-center">
+        <h5 class="fw-bold mb-1"><i class="fa-solid fa-qrcode text-primary me-2"></i>Scan & Pay with UPI</h5>
+        <p class="text-secondary small mb-3">Pay exactly <strong class="text-success fs-5" id="payAmountText">₹0</strong> to unlock voucher</p>
+        
+        <div class="my-2">
+          <div class="qr-container">
+            <img id="upiQrImage" src="" alt="UPI QR" style="width: 200px; height: 200px;">
+          </div>
+        </div>
+
+        <div class="alert alert-dark border-0 py-2 small my-3 text-secondary d-flex align-items-center justify-content-center gap-2">
+          <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+          <span>Waiting for payment confirmation...</span>
+        </div>
+
+        <button id="verifyPayBtn" class="btn btn-success w-100 fw-bold py-2" onclick="confirmPayment()">
+          <i class="fa-solid fa-circle-check me-1"></i> I Have Completed Payment
+        </button>
+        <button class="btn btn-link text-secondary btn-sm mt-2 text-decoration-none" onclick="cancelPaymentOrder()">Cancel Order</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auth Modal -->
+  <div class="modal fade" id="authModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content p-3">
+        <div class="modal-header border-0">
+          <h5 class="modal-title fw-bold" id="authTitle">Sign In to Voucher Vault</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3 d-none" id="nameFieldContainer">
+            <label class="form-label small text-secondary">Full Name</label>
+            <input type="text" id="authName" class="form-control form-control-dark" placeholder="John Doe">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Email Address</label>
+            <input type="email" id="authEmail" class="form-control form-control-dark" placeholder="name@example.com">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small text-secondary">Password</label>
+            <input type="password" id="authPass" class="form-control form-control-dark" placeholder="••••••••">
+          </div>
+          <button id="authActionBtn" class="btn btn-primary w-100 fw-bold py-2 mt-2" onclick="handleAuthSubmit()">Sign In</button>
+          <div class="text-center mt-3">
+            <small class="text-secondary" id="authToggleText">Don't have an account? <a href="#" class="text-primary text-decoration-none" onclick="toggleAuthMode()">Sign Up</a></small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Orders History Modal -->
+  <div class="modal fade" id="ordersModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content p-3">
+        <div class="modal-header border-0">
+          <h5 class="modal-title fw-bold"><i class="fa-solid fa-receipt text-primary me-2"></i>My Orders & Vouchers</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="ordersListContainer">
+          <div class="text-center py-4 text-secondary">Loading your orders...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let allProducts = [];
+    let isSignupMode = false;
+    let currentPendingOrder = null;
+    let pollInterval = null;
+
+    function checkAuthStatus() {
+      const token = localStorage.getItem('vv_token');
+      const email = localStorage.getItem('vv_email');
+      const nav = document.getElementById('authNavContainer');
+
+      if (token && email) {
+        nav.innerHTML = `
+          <button class="btn btn-outline-info btn-sm rounded-pill px-3" onclick="openMyOrders()">
+            <i class="fa-solid fa-clock-rotate-left me-1"></i> My Orders
+          </button>
+          <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2">
+            <i class="fa-solid fa-user-circle me-1"></i> ${email}
+          </span>
+          <button class="btn btn-outline-danger btn-sm rounded-pill" onclick="logout()">Logout</button>
+        `;
+      } else {
+        nav.innerHTML = `
+          <button class="btn btn-outline-light btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#authModal">
+            <i class="fa-solid fa-user me-1"></i> Sign In / Sign Up
+          </button>
+        `;
+      }
+    }
+
+    function toggleAuthMode() {
+      isSignupMode = !isSignupMode;
+      document.getElementById('authTitle').innerText = isSignupMode ? 'Create an Account' : 'Sign In to Voucher Vault';
+      document.getElementById('authActionBtn').innerText = isSignupMode ? 'Sign Up' : 'Sign In';
+      
+      const nameBox = document.getElementById('nameFieldContainer');
+      if (isSignupMode) {
+        nameBox.classList.remove('d-none');
+      } else {
+        nameBox.classList.add('d-none');
+      }
+
+      document.getElementById('authToggleText').innerHTML = isSignupMode 
+        ? `Already have an account? <a href="#" class="text-primary text-decoration-none" onclick="toggleAuthMode()">Sign In</a>`
+        : `Don't have an account? <a href="#" class="text-primary text-decoration-none" onclick="toggleAuthMode()">Sign Up</a>`;
+    }
+
+    async function handleAuthSubmit() {
+      const email = document.getElementById('authEmail').value.trim();
+      const password = document.getElementById('authPass').value.trim();
+      const fullName = document.getElementById('authName').value.trim();
+
+      if (!email || !password) return alert('Please enter both email and password');
+
+      const endpoint = isSignupMode ? '/api/v1/auth/signup' : '/api/v1/auth/login';
+      const bodyData = isSignupMode ? { fullName, email, password } : { email, password };
+
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bodyData)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Authentication failed');
+
+        localStorage.setItem('vv_token', data.token);
+        localStorage.setItem('vv_email', data.user.email);
+        bootstrap.Modal.getInstance(document.getElementById('authModal')).hide();
+        checkAuthStatus();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('vv_token');
+      localStorage.removeItem('vv_email');
+      checkAuthStatus();
+    }
+
+    async function openMyOrders() {
+      const token = localStorage.getItem('vv_token');
+      if (!token) return;
+
+      const modal = new bootstrap.Modal(document.getElementById('ordersModal'));
+      modal.show();
+
+      const container = document.getElementById('ordersListContainer');
+      container.innerHTML = '<div class="text-center py-4 text-secondary">Loading your orders...</div>';
+
+      try {
+        const res = await fetch('/api/v1/auth/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        if (!data.orders || data.orders.length === 0) {
+          container.innerHTML = '<div class="text-center py-4 text-secondary">You haven\'t purchased any vouchers yet.</div>';
+          return;
+        }
+
+        container.innerHTML = data.orders.map(o => `
+          <div class="order-item-box p-3 mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div>
+                <span class="badge ${o.status === 'COMPLETED' ? 'bg-success' : 'bg-warning text-dark'}">${o.status}</span>
+                <span class="small font-monospace text-secondary ms-2">${o.id}</span>
+              </div>
+              <h6 class="fw-bold text-success mb-0">₹${o.total_amount}</h6>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+              <small class="text-secondary">${new Date(o.created_at).toLocaleString()}</small>
+              <button class="btn btn-sm btn-outline-primary" onclick="viewOrderVoucher('${o.id}')">
+                <i class="fa-solid fa-eye me-1"></i> View Code
+              </button>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        container.innerHTML = `<div class="text-danger text-center py-3">${err.message}</div>`;
+      }
+    }
+
+    async function viewOrderVoucher(orderId) {
+      bootstrap.Modal.getInstance(document.getElementById('ordersModal')).hide();
+      document.getElementById('utrInput').value = orderId;
+      searchByUTR();
+    }
+
+    async function loadProducts() {
+      try {
+        const res = await fetch('/api/v1/products');
+        const data = await res.json();
+        allProducts = data.products || [];
+        renderCards('all');
+      } catch (err) {
+        document.getElementById('productsGrid').innerHTML = `<div class="col-12 text-danger text-center">Failed to load vouchers: ${err.message}</div>`;
+      }
+    }
+
+    function renderCards(category) {
+      const container = document.getElementById('productsGrid');
+      if (!container) return;
+
+      const filtered = category === 'all' 
+        ? allProducts 
+        : allProducts.filter(p => (p.category_slug || '').toLowerCase() === category.toLowerCase());
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="col-12 text-secondary py-4 text-center">No vouchers available in this category.</div>';
+        return;
+      }
+
+      container.innerHTML = filtered.map(p => `
+        <div class="col-md-4">
+          <div class="voucher-card p-3 d-flex flex-column justify-content-between h-100">
+            <div>
+              <div class="d-flex align-items-center gap-3 mb-3">
+                <img src="${p.logo_url || 'https://via.placeholder.com/48'}" class="brand-logo" alt="${p.brand_name}">
+                <div>
+                  <h6 class="fw-bold mb-0 text-white">${p.title}</h6>
+                  <small class="text-secondary">${p.category_name || 'Gift Card'}</small>
+                </div>
+              </div>
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="badge ${p.available_stock > 0 ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-danger-subtle text-danger border border-danger-subtle'}">
+                  ${p.available_stock > 0 ? `${p.available_stock} IN STOCK` : 'SOLD OUT'}
+                </span>
+                <span class="small text-secondary"><i class="fa-solid fa-bolt text-warning me-1"></i>Instant</span>
+              </div>
+            </div>
+            <div>
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <small class="text-secondary text-decoration-line-through">₹${p.denomination}</small>
+                  <h5 class="fw-bold text-success mb-0">₹${p.selling_price}</h5>
+                </div>
+                <button class="btn btn-buy" ${p.available_stock == 0 ? 'disabled' : ''} onclick="buyProduct('${p.product_id}', this)">
+                  ${p.available_stock > 0 ? 'Buy Now' : 'Sold Out'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function filterCategory(cat, el) {
+      document.querySelectorAll('.category-pill').forEach(pill => pill.classList.remove('active'));
+      el.classList.add('active');
+      renderCards(cat);
+    }
+
+    async function buyProduct(productId, btn) {
+      btn.disabled = true;
+      btn.innerText = 'Creating QR...';
+
+      const token = localStorage.getItem('vv_token');
+
+      try {
+        const reserveRes = await fetch('/api/v1/checkout/reserve', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ items: [{ voucherProductId: productId, quantity: 1 }] })
+        });
+        const reserveData = await reserveRes.json();
+        if (!reserveRes.ok) throw new Error(reserveData.error || 'Out of stock');
+
+        currentPendingOrder = reserveData;
+
+        document.getElementById('payAmountText').innerText = `₹${reserveData.totalAmount}`;
+        document.getElementById('upiQrImage').src = reserveData.qrDataUrl;
+        
+        const payModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+        payModal.show();
+
+        btn.disabled = false;
+        btn.innerText = 'Buy Now';
+      } catch (err) {
+        alert(err.message);
+        btn.disabled = false;
+        btn.innerText = 'Buy Now';
+      }
+    }
+
+    async function confirmPayment() {
+      if (!currentPendingOrder) return;
+      const verifyBtn = document.getElementById('verifyPayBtn');
+      verifyBtn.disabled = true;
+      verifyBtn.innerText = 'Verifying...';
+
+      try {
+        const payRes = await fetch('/api/v1/webhooks/payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId: currentPendingOrder.orderId })
+        });
+        const payData = await payRes.json();
+        if (!payRes.ok) throw new Error(payData.error || 'Payment confirmation failed');
+
+        const voucherRes = await fetch(`/api/v1/orders/${currentPendingOrder.orderId}/vouchers`);
+        const vouchers = await voucherRes.json();
+
+        bootstrap.Modal.getInstance(document.getElementById('paymentModal')).hide();
+
+        document.getElementById('voucherModal').classList.remove('d-none');
+        document.getElementById('outOrderId').innerText = currentPendingOrder.orderId;
+        document.getElementById('outCode').innerText = vouchers.vouchers[0].code;
+        
+        if (vouchers.vouchers[0].pin) {
+          document.getElementById('pinContainer').classList.remove('d-none');
+          document.getElementById('outPin').innerText = vouchers.vouchers[0].pin;
+        } else {
+          document.getElementById('pinContainer').classList.add('d-none');
+        }
+
+        loadProducts();
+      } catch (err) {
+        alert('Verification error: ' + err.message);
+      } finally {
+        verifyBtn.disabled = false;
+        verifyBtn.innerText = 'I Have Completed Payment';
+      }
+    }
+
+    function cancelPaymentOrder() {
+      bootstrap.Modal.getInstance(document.getElementById('paymentModal')).hide();
+    }
+
+    function copyVoucherCode() {
+      const code = document.getElementById('outCode').innerText;
+      navigator.clipboard.writeText(code);
+      alert('Voucher Code Copied: ' + code);
+    }
+
+    async function searchByUTR() {
+      const id = document.getElementById('utrInput').value.trim();
+      if (!id) return alert('Please enter Order ID');
+      try {
+        const res = await fetch(`/api/v1/orders/${id}/vouchers`);
+        const data = await res.json();
+        if (!res.ok || !data.vouchers || data.vouchers.length === 0) {
+          throw new Error(data.error || 'Not found');
+        }
+        
+        document.getElementById('voucherModal').classList.remove('d-none');
+        document.getElementById('outOrderId').innerText = id;
+        document.getElementById('outCode').innerText = data.vouchers[0].code;
+        if (data.vouchers[0].pin) {
+          document.getElementById('pinContainer').classList.remove('d-none');
+          document.getElementById('outPin').innerText = data.vouchers[0].pin;
+        } else {
+          document.getElementById('pinContainer').classList.add('d-none');
+        }
+      } catch(e) {
+        alert(e.message);
+      }
+    }
+
+    checkAuthStatus();
+    loadProducts();
+  </script>
+</body>
+</html>
