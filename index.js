@@ -5,7 +5,7 @@ const { Pool } = require('pg');
 const TelegramBot = require('node-telegram-bot-api');
 require('dotenv').config();
 
-// 1. SUPABASE POSTGRESQL DATABASE POOL
+// 1. SUPABASE DATABASE CONNECTION
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: {
@@ -15,29 +15,28 @@ const pool = new Pool({
 
 pool.query('SELECT NOW()', (err, res) => {
     if (err) {
-        console.error('❌ Supabase DB Connection Failed:', err.message);
+        console.error('❌ DB Error:', err.message);
     } else {
-        console.log('✅ Supabase PostgreSQL Connected Successfully at', res.rows[0].now);
+        console.log('✅ Supabase DB Connected Successfully');
     }
 });
 
-// 2. 24x7 TELEGRAM BOT WORKER
+// 2. 24x7 TELEGRAM BOT (FIXED MARKDOWN)
 const token = process.env.TELEGRAM_BOT_TOKEN;
-if (!token) {
-    console.error('❌ TELEGRAM_BOT_TOKEN missing in Render Environment!');
-} else {
+if (token) {
     try {
         const bot = new TelegramBot(token, { polling: true });
 
         bot.on('polling_error', (error) => {
-            console.error('Telegram Polling Error:', error.message);
+            console.error('Bot Polling Error:', error.message);
         });
 
-        bot.onText(/\/start/, async (msg) => {
+        bot.onText(/\/start/, (msg) => {
             const chatId = msg.chat.id;
             const firstName = msg.from.first_name || 'Customer';
-            bot.sendMessage(chatId, `👋 Hello ${firstName}!\n\nWelcome to **Voucher Vault** 🎁\n\nYour 24/7 Automated Voucher Store is Active and Ready!\n\n🌐 Website: https://voucher-vault-lhqo.onrender.com`, {
-                parse_mode: 'Markdown',
+            const welcomeText = `👋 Hello ${firstName}!\n\nWelcome to Voucher Vault 🎁\n\nYour 24/7 Automated Voucher Store is Active and Ready!\n\n🌐 Website: https://voucher-vault-lhqo.onrender.com`;
+            
+            bot.sendMessage(chatId, welcomeText, {
                 reply_markup: {
                     keyboard: [
                         [{ text: '🛍️ Browse Vouchers' }, { text: '📦 My Orders' }],
@@ -45,29 +44,29 @@ if (!token) {
                     ],
                     resize_keyboard: true
                 }
-            });
+            }).catch(e => console.error('Send Error:', e.message));
         });
 
         bot.on('message', (msg) => {
             if (msg.text && !msg.text.startsWith('/start')) {
-                bot.sendMessage(msg.chat.id, `Received: "${msg.text}". Use /start to open the store menu.`);
+                bot.sendMessage(msg.chat.id, `Received: "${msg.text}". Use /start to open the menu.`).catch(e => console.error('Send Error:', e.message));
             }
         });
 
         console.log('🤖 Telegram Bot Worker attached and active!');
-    } catch (botErr) {
-        console.error('❌ Bot initialization failed:', botErr.message);
+    } catch (e) {
+        console.error('Bot error:', e.message);
     }
 }
 
-// 3. EXPRESS APP SETUP
+// 3. EXPRESS APP & ROUTES
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 4. AUTHENTICATION ROUTES (Handles all variations)
+// REGISTER
 const handleAuthRegister = async (req, res) => {
     try {
         const { email, password, full_name, name } = req.body;
@@ -89,8 +88,7 @@ const handleAuthRegister = async (req, res) => {
         );
         return res.json({ success: true, user: newUser.rows[0] });
     } catch (err) {
-        console.error('Registration Route Error:', err.message);
-        return res.status(500).json({ error: 'Database error: ' + err.message });
+        return res.status(500).json({ error: err.message });
     }
 };
 
@@ -98,6 +96,7 @@ app.post('/api/auth/register', handleAuthRegister);
 app.post('/api/register', handleAuthRegister);
 app.post('/api/users/register', handleAuthRegister);
 
+// LOGIN
 const handleAuthLogin = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -115,8 +114,7 @@ const handleAuthLogin = async (req, res) => {
         const user = result.rows[0];
         return res.json({ success: true, user: { id: user.id, email: user.email, full_name: user.full_name } });
     } catch (err) {
-        console.error('Login Route Error:', err.message);
-        return res.status(500).json({ error: 'Database error: ' + err.message });
+        return res.status(500).json({ error: err.message });
     }
 };
 
@@ -124,7 +122,7 @@ app.post('/api/auth/login', handleAuthLogin);
 app.post('/api/login', handleAuthLogin);
 app.post('/api/users/login', handleAuthLogin);
 
-// 5. STORE PRODUCTS & BRANDS
+// STORE PRODUCTS
 const handleStoreData = async (req, res) => {
     try {
         const result = await pool.query(`
@@ -145,7 +143,6 @@ const handleStoreData = async (req, res) => {
         `);
         return res.json(result.rows);
     } catch (err) {
-        console.error('Store Data Query Error:', err.message);
         return res.status(500).json({ error: err.message });
     }
 };
@@ -154,7 +151,7 @@ app.get('/api/store/brands', handleStoreData);
 app.get('/api/brands', handleStoreData);
 app.get('/api/products', handleStoreData);
 
-// 6. SPA FALLBACK
+// SPA FALLBACK
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
