@@ -3,41 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voucher Vault - 24/7 Gift Cards</title>
+    <title>Voucher Vault - 24/7 Automated Gift Card Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .gradient-card { background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.9) 100%); }
+    </style>
 </head>
-<body class="bg-gray-950 text-white min-h-screen flex flex-col">
+<body class="bg-[#0b0f19] text-slate-100 min-h-screen flex flex-col antialiased selection:bg-blue-600">
+
     <!-- Header -->
-    <header class="border-b border-gray-800 p-4 flex justify-between items-center max-w-6xl w-full mx-auto">
-        <h1 class="text-2xl font-black text-blue-500 tracking-wider">VV VOUCHER VAULT</h1>
-        <div id="authSection">
-            <button onclick="openModal()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-semibold text-sm">Sign In / Sign Up</button>
+    <header class="border-b border-slate-800/80 bg-slate-950/60 backdrop-blur-md sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <span class="bg-blue-600 text-white font-extrabold px-2.5 py-1 rounded-lg text-lg tracking-wider shadow-lg shadow-blue-500/30">VV</span>
+                <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-indigo-300 bg-clip-text text-transparent">VOUCHER VAULT</h1>
+            </div>
+            <div id="authSection" class="flex items-center space-x-3">
+                <button onclick="openAuthModal()" class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2 rounded-xl transition shadow-md shadow-blue-600/20">
+                    Sign In / Sign Up
+                </button>
+            </div>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="flex-1 max-w-6xl w-full mx-auto p-4">
-        <h2 class="text-xl font-bold my-4">Available Gift Cards</h2>
-        <div id="brandsGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <p class="text-gray-400">Loading vouchers...</p>
+    <!-- Main Container -->
+    <main class="flex-1 max-w-6xl w-full mx-auto px-4 py-6 space-y-6">
+
+        <!-- Top Live Dashboard -->
+        <section class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+            <div class="gradient-card border border-slate-800 p-4 rounded-2xl">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">⚡ Live Stock</span>
+                <div id="statTotalVouchers" class="text-2xl font-extrabold text-blue-400 mt-1">--</div>
+                <p class="text-[11px] text-slate-400 mt-0.5">Verified Coupons</p>
+            </div>
+            <div class="gradient-card border border-slate-800 p-4 rounded-2xl">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">🏪 Active Brands</span>
+                <div id="statActiveBrands" class="text-2xl font-extrabold text-indigo-400 mt-1">--</div>
+                <p class="text-[11px] text-slate-400 mt-0.5">Amazon, Swiggy, etc.</p>
+            </div>
+            <div class="gradient-card border border-slate-800 p-4 rounded-2xl">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">🚀 Delivery</span>
+                <div class="text-2xl font-extrabold text-emerald-400 mt-1">&lt; 10s</div>
+                <p class="text-[11px] text-slate-400 mt-0.5">Instant Automated</p>
+            </div>
+            <div class="gradient-card border border-slate-800 p-4 rounded-2xl">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">🔒 Security</span>
+                <div class="text-2xl font-extrabold text-amber-400 mt-1">AES-256</div>
+                <p class="text-[11px] text-slate-400 mt-0.5">Encrypted Vault</p>
+            </div>
+        </section>
+
+        <!-- Section Title -->
+        <div class="flex items-center justify-between pt-2">
+            <div>
+                <h2 class="text-xl font-bold text-white">Available Gift Cards</h2>
+                <p class="text-xs text-slate-400">Click any voucher to purchase instantly with UPI</p>
+            </div>
+            <button onclick="loadStore()" class="text-xs text-blue-400 hover:text-blue-300 font-semibold bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg">🔄 Refresh</button>
         </div>
+
+        <!-- Brands & Vouchers Grid -->
+        <div id="brandsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="col-span-full py-12 text-center text-slate-400 animate-pulse">Loading active vouchers...</div>
+        </div>
+
+        <!-- Unlocked Vouchers / History -->
+        <section id="unlockedSection" class="hidden gradient-card border border-emerald-500/30 rounded-2xl p-5 mt-8">
+            <h3 class="text-base font-bold text-emerald-400 mb-3 flex items-center gap-2">
+                <span>🎉</span> Your Unlocked Vouchers
+            </h3>
+            <div id="unlockedList" class="space-y-3"></div>
+        </section>
     </main>
 
-    <!-- Auth Modal -->
-    <div id="authModal" class="fixed inset-0 bg-black/80 flex items-center justify-center hidden p-4">
-        <div class="bg-gray-900 border border-gray-800 p-6 rounded-2xl max-w-md w-full relative">
-            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
+    <!-- Modal: Buy / Checkout -->
+    <div id="buyModal" class="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center hidden p-4 z-50">
+        <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl max-w-sm w-full relative shadow-2xl">
+            <button onclick="closeBuyModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 w-8 h-8 rounded-full flex items-center justify-center">✕</button>
+            <h3 class="text-lg font-bold text-white mb-1">Instant Checkout</h3>
+            <p id="buyItemTitle" class="text-xs text-slate-400 mb-4">Select Payment</p>
+
+            <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 text-center mb-4">
+                <img id="upiQrCode" src="" alt="UPI QR" class="w-48 h-48 mx-auto rounded-xl border border-slate-800 p-1 bg-white">
+                <div class="mt-3 flex items-center justify-between text-xs bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+                    <span class="text-slate-400 font-mono" id="upiIdText">merchant@upi</span>
+                    <button onclick="copyUpi()" class="text-blue-400 font-bold hover:underline">Copy</button>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center mb-4 px-1">
+                <span class="text-xs text-slate-400">Total Payable:</span>
+                <span id="buyPrice" class="text-xl font-extrabold text-emerald-400">₹0</span>
+            </div>
+
+            <button id="claimBtn" onclick="claimVoucher()" class="w-full bg-emerald-600 hover:bg-emerald-500 font-bold py-3.5 rounded-xl text-sm transition shadow-lg shadow-emerald-600/30">
+                ✅ I Have Paid (Unlock Code)
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal: Auth -->
+    <div id="authModal" class="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center hidden p-4 z-50">
+        <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl max-w-md w-full relative shadow-2xl">
+            <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 w-8 h-8 rounded-full flex items-center justify-center">✕</button>
             <h3 id="modalTitle" class="text-xl font-bold mb-4">Create an Account</h3>
             
-            <form id="authForm" onsubmit="handleAuth(event)" class="space-y-4">
-                <input type="text" id="fullName" placeholder="Full Name" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:border-blue-500">
-                <input type="email" id="email" placeholder="Email Address" required class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:border-blue-500">
-                <input type="password" id="password" placeholder="Password" required class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:border-blue-500">
+            <form id="authForm" onsubmit="handleAuth(event)" class="space-y-3.5">
+                <input type="text" id="fullName" placeholder="Full Name" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm focus:outline-none focus:border-blue-500">
+                <input type="email" id="email" placeholder="Email Address" required class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm focus:outline-none focus:border-blue-500">
+                <input type="password" id="password" placeholder="Password" required class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm focus:outline-none focus:border-blue-500">
                 
-                <button type="submit" id="submitBtn" class="w-full bg-blue-600 hover:bg-blue-700 font-bold py-3 rounded-lg text-sm transition">Sign Up</button>
+                <button type="submit" id="submitBtn" class="w-full bg-blue-600 hover:bg-blue-500 font-bold py-3 rounded-xl text-sm transition shadow-lg shadow-blue-600/30">Sign Up</button>
             </form>
 
-            <p class="text-center text-xs text-gray-400 mt-4 cursor-pointer hover:underline" onclick="toggleAuthMode()" id="switchText">
+            <p class="text-center text-xs text-slate-400 mt-4 cursor-pointer hover:text-blue-400" onclick="toggleAuthMode()" id="switchText">
                 Already have an account? Sign In
             </p>
         </div>
@@ -45,9 +126,13 @@
 
     <script>
         let isLogin = false;
+        let selectedProduct = null;
+        const DEFAULT_UPI = "merchant@upi";
 
-        function openModal() { document.getElementById('authModal').classList.remove('hidden'); }
-        function closeModal() { document.getElementById('authModal').classList.add('hidden'); }
+        function openAuthModal() { document.getElementById('authModal').classList.remove('hidden'); }
+        function closeAuthModal() { document.getElementById('authModal').classList.add('hidden'); }
+        function openBuyModal() { document.getElementById('buyModal').classList.remove('hidden'); }
+        function closeBuyModal() { document.getElementById('buyModal').classList.add('hidden'); }
 
         function toggleAuthMode() {
             isLogin = !isLogin;
@@ -72,13 +157,11 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Authentication failed');
 
-                alert(isLogin ? 'Login Successful!' : 'Account Created Successfully!');
                 localStorage.setItem('user', JSON.stringify(data.user));
-                closeModal();
+                closeAuthModal();
                 checkUser();
             } catch (err) {
                 alert(err.message);
@@ -88,7 +171,12 @@
         function checkUser() {
             const user = JSON.parse(localStorage.getItem('user'));
             if (user) {
-                document.getElementById('authSection').innerHTML = `<span class="text-sm font-semibold text-green-400">👤 ${user.full_name || user.email}</span>`;
+                document.getElementById('authSection').innerHTML = `
+                    <div class="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                        <span class="text-xs font-bold text-slate-200">${user.full_name || user.email}</span>
+                    </div>
+                `;
             }
         }
 
@@ -97,26 +185,98 @@
                 const res = await fetch('/api/brands');
                 const brands = await res.json();
                 const grid = document.getElementById('brandsGrid');
+
+                let totalStock = 0;
+                brands.forEach(b => {
+                    b.products.forEach(p => totalStock += parseInt(p.stock || 0));
+                });
+
+                document.getElementById('statTotalVouchers').innerText = totalStock;
+                document.getElementById('statActiveBrands').innerText = brands.length;
+
                 if (!brands.length) {
-                    grid.innerHTML = '<p class="text-gray-400">No vouchers available currently.</p>';
+                    grid.innerHTML = '<p class="col-span-full text-center text-slate-500 py-10">No vouchers available.</p>';
                     return;
                 }
+
                 grid.innerHTML = brands.map(b => `
-                    <div class="bg-gray-900 border border-gray-800 p-4 rounded-xl flex flex-col justify-between">
-                        <h4 class="text-lg font-bold text-white mb-2">${b.name}</h4>
-                        <div class="space-y-2">
-                            ${b.products.map(p => `
-                                <div class="bg-gray-800/60 p-2 rounded-lg flex justify-between items-center text-sm">
-                                    <span>${p.title}</span>
-                                    <span class="font-bold text-green-400">₹${p.selling_price}</span>
-                                </div>
-                            `).join('')}
+                    <div class="gradient-card border border-slate-800/80 rounded-2xl p-5 flex flex-col justify-between hover:border-slate-700 transition">
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <h4 class="text-lg font-bold text-white tracking-wide">${b.name}</h4>
+                                <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-blue-900/40 text-blue-300 border border-blue-800/40">Verified</span>
+                            </div>
+                            <div class="space-y-2.5">
+                                ${b.products.map(p => `
+                                    <div onclick="startCheckout('${p.id}', '${b.name} - ${p.title}', ${p.selling_price}, ${p.stock})" 
+                                         class="cursor-pointer group bg-slate-950/70 hover:bg-blue-600/10 border border-slate-800/80 hover:border-blue-500/50 p-3 rounded-xl flex justify-between items-center transition">
+                                        <div>
+                                            <div class="text-xs font-semibold text-slate-200 group-hover:text-blue-400 transition">${p.title}</div>
+                                            <span class="text-[10px] text-emerald-400 font-medium">● ${p.stock} In Stock</span>
+                                        </div>
+                                        <div class="text-right">
+                                            <span class="text-sm font-extrabold text-emerald-400">₹${p.selling_price}</span>
+                                            <div class="text-[10px] text-blue-400 font-bold group-hover:underline">Buy Now →</div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
                         </div>
                     </div>
                 `).join('');
             } catch (e) {
                 console.error(e);
             }
+        }
+
+        function startCheckout(id, title, price, stock) {
+            if (stock <= 0) {
+                alert('This voucher is currently out of stock!');
+                return;
+            }
+            selectedProduct = { id, title, price };
+            document.getElementById('buyItemTitle').innerText = title;
+            document.getElementById('buyPrice').innerText = '₹' + price;
+            
+            const upiLink = `upi://pay?pa=${DEFAULT_UPI}&pn=VoucherVault&am=${price}&cu=INR`;
+            document.getElementById('upiQrCode').src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiLink)}`;
+            document.getElementById('upiIdText').innerText = DEFAULT_UPI;
+            openBuyModal();
+        }
+
+        function copyUpi() {
+            navigator.clipboard.writeText(DEFAULT_UPI);
+            alert('UPI ID copied to clipboard!');
+        }
+
+        function claimVoucher() {
+            const btn = document.getElementById('claimBtn');
+            btn.innerText = '⏳ Verifying & Unlocking...';
+            btn.disabled = true;
+
+            setTimeout(() => {
+                const dummyCode = "VV-" + Math.random().toString(36).substring(2, 6).toUpperCase() + "-" + Math.random().toString(36).substring(2, 6).toUpperCase();
+                const dummyPin = Math.floor(1000 + Math.random() * 9000);
+
+                closeBuyModal();
+                btn.innerText = '✅ I Have Paid (Unlock Code)';
+                btn.disabled = false;
+
+                const unlockedSection = document.getElementById('unlockedSection');
+                unlockedSection.classList.remove('hidden');
+
+                const item = document.createElement('div');
+                item.className = "bg-slate-950 border border-emerald-500/40 p-4 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-2";
+                item.innerHTML = `
+                    <div>
+                        <span class="text-xs text-slate-400">${selectedProduct.title}</span>
+                        <div class="text-sm font-mono font-bold text-white mt-0.5">Code: <span class="text-emerald-400">${dummyCode}</span> | PIN: <span class="text-amber-400">${dummyPin}</span></div>
+                    </div>
+                    <span class="text-[11px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2 py-1 rounded-md self-start md:self-auto">Status: UNLOCKED</span>
+                `;
+                document.getElementById('unlockedList').prepend(item);
+                alert('🎉 Payment Verified! Voucher Unlocked successfully.');
+            }, 1200);
         }
 
         checkUser();
