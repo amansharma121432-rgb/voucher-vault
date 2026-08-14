@@ -1,324 +1,165 @@
-﻿import cron from 'node-cron';
-import express from 'express';
-import crypto from 'crypto';
-import dotenv from 'dotenv';
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
-import QRCode from 'qrcode';
-import { pool } from './db.js';
-import { encrypt, decrypt } from './cryptoService.js';
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const { Pool } = require('pg');
+const TelegramBot = require('node-telegram-bot-api');
+require('dotenv').config();
 
-dotenv.config();
+// 1. SUPABASE POSTGRESQL DATABASE POOL
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false
+    }
+});
 
+pool.query('SELECT NOW()', (err, res) => {
+    if (err) {
+        console.error('❌ Supabase DB Connection Failed:', err.message);
+    } else {
+        console.log('✅ Supabase PostgreSQL Connected Successfully at', res.rows[0].now);
+    }
+});
+
+// 2. 24x7 TELEGRAM BOT WORKER
+const token = process.env.TELEGRAM_BOT_TOKEN;
+if (!token) {
+    console.error('❌ TELEGRAM_BOT_TOKEN missing in Render Environment!');
+} else {
+    try {
+        const bot = new TelegramBot(token, { polling: true });
+
+        bot.on('polling_error', (error) => {
+            console.error('Telegram Polling Error:', error.message);
+        });
+
+        bot.onText(/\/start/, async (msg) => {
+            const chatId = msg.chat.id;
+            const firstName = msg.from.first_name || 'Customer';
+            bot.sendMessage(chatId, `👋 Hello ${firstName}!\n\nWelcome to **Voucher Vault** 🎁\n\nYour 24/7 Automated Voucher Store is Active and Ready!\n\n🌐 Website: https://voucher-vault-lhqo.onrender.com`, {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    keyboard: [
+                        [{ text: '🛍️ Browse Vouchers' }, { text: '📦 My Orders' }],
+                        [{ text: '🆘 Support' }]
+                    ],
+                    resize_keyboard: true
+                }
+            });
+        });
+
+        bot.on('message', (msg) => {
+            if (msg.text && !msg.text.startsWith('/start')) {
+                bot.sendMessage(msg.chat.id, `Received: "${msg.text}". Use /start to open the store menu.`);
+            }
+        });
+
+        console.log('🤖 Telegram Bot Worker attached and active!');
+    } catch (botErr) {
+        console.error('❌ Bot initialization failed:', botErr.message);
+    }
+}
+
+// 3. EXPRESS APP SETUP
 const app = express();
-const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_vault_2026';
-const UPI_ID = process.env.UPI_ID || 'merchant@upi';
-const MERCHANT_NAME = 'Voucher Vault';
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
 
-app.use(express.json({
-  verify: (req, res, buf) => { req.rawBody = buf; }
-}));
+// 4. AUTHENTICATION ROUTES (Handles all variations)
+const handleAuthRegister = async (req, res) => {
+    try {
+        const { email, password, full_name, name } = req.body;
+        const userEmail = email ? email.trim().toLowerCase() : null;
+        const userName = full_name || name || 'Customer';
 
-app.use(express.static('public'));
+        if (!userEmail || !password) {
+            return res.status(400).json({ error: 'Email and password required' });
+        }
 
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Access token required' });
+        const checkUser = await pool.query('SELECT id FROM users WHERE LOWER(email) = $1', [userEmail]);
+        if (checkUser.rows.length > 0) {
+            return res.status(400).json({ error: 'Email already exists' });
+        }
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ error: 'Invalid or expired token' });
-    req.user = user;
-    next();
-  });
+        const newUser = await pool.query(
+            'INSERT INTO users (email, password_hash, full_name) VALUES ($1, $2, $3) RETURNING id, email, full_name',
+            [userEmail, password, userName]
+        );
+        return res.json({ success: true, user: newUser.rows[0] });
+    } catch (err) {
+        console.error('Registration Route Error:', err.message);
+        return res.status(500).json({ error: 'Database error: ' + err.message });
+    }
 };
 
-// 1. Signup
-app.post('/api/v1/auth/signup', async (req, res) => {
-  const { fullName, email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+app.post('/api/auth/register', handleAuthRegister);
+app.post('/api/register', handleAuthRegister);
+app.post('/api/users/register', handleAuthRegister);
 
-  const nameToSave = fullName && fullName.trim() ? fullName.trim() : email.split('@')[0];
-
-  try {
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
-
-    const result = await pool.query(
-      `INSERT INTO users (full_name, email, password_hash) VALUES ($1, $2, $3) RETURNING id, email, full_name`,
-      [nameToSave, email.toLowerCase(), passwordHash]
-    );
-
-    const user = result.rows[0];
-    const token = jwt.sign({ id: user.id, email: user.email, fullName: user.full_name }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ message: 'User created successfully', token, user });
-  } catch (err) {
-    if (err.code === '23505') return res.status(409).json({ error: 'Email is already registered' });
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 2. Login
-app.post('/api/v1/auth/login', async (req, res) => {
-  const { email, password } = req.body;
-  try {
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email.toLowerCase()]);
-    if (result.rows.length === 0) return res.status(401).json({ error: 'Invalid email or password' });
-
-    const user = result.rows[0];
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch) return res.status(401).json({ error: 'Invalid email or password' });
-
-    const token = jwt.sign({ id: user.id, email: user.email, fullName: user.full_name }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user.id, email: user.email, fullName: user.full_name } });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 3. User Orders
-app.get('/api/v1/auth/me', authenticateToken, async (req, res) => {
-  try {
-    const ordersRes = await pool.query(
-      `SELECT o.id, COALESCE(o.final_payable, o.total_amount) AS total_amount, o.status, o.created_at
-       FROM orders o
-       WHERE o.user_id = $1
-       ORDER BY o.created_at DESC`,
-      [req.user.id]
-    );
-    res.json({ user: req.user, orders: ordersRes.rows });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 4. Products Listing
-app.get('/api/v1/products', async (req, res) => {
-  try {
-    const query = `
-      SELECT 
-        vp.id AS product_id,
-        vp.title,
-        vp.denomination,
-        vp.selling_price,
-        b.name AS brand_name,
-        b.logo_url,
-        c.name AS category_name,
-        c.slug AS category_slug,
-        COUNT(vi.id) FILTER (WHERE vi.status = 'AVAILABLE') AS available_stock
-      FROM voucher_products vp
-      JOIN brands b ON vp.brand_id = b.id
-      JOIN categories c ON b.category_id = c.id
-      LEFT JOIN voucher_inventory vi ON vp.id = vi.voucher_product_id
-      WHERE vp.is_active = TRUE
-      GROUP BY vp.id, b.name, b.logo_url, c.name, c.slug;
-    `;
-    const { rows } = await pool.query(query);
-    res.json({ products: rows });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 5. Admin - Bulk Ingest
-app.post('/api/v1/admin/vouchers/bulk', async (req, res) => {
-  const { voucherProductId, vouchers } = req.body;
-  if (!voucherProductId || !vouchers || !Array.isArray(vouchers)) {
-    return res.status(400).json({ error: 'Invalid payload.' });
-  }
-
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const insertQuery = `
-      INSERT INTO voucher_inventory (voucher_product_id, encrypted_code, encrypted_pin, serial_number, expiry_date, status)
-      VALUES ($1, $2, $3, $4, $5, 'AVAILABLE')
-    `;
-    for (const v of vouchers) {
-      const encCode = encrypt(v.code);
-      const encPin = v.pin ? encrypt(v.pin) : null;
-      await client.query(insertQuery, [voucherProductId, encCode, encPin, v.serialNumber, v.expiryDate]);
-    }
-    await client.query('COMMIT');
-    res.json({ message: `Successfully loaded ${vouchers.length} vouchers.` });
-  } catch (err) {
-    await client.query('ROLLBACK');
-    res.status(500).json({ error: err.message });
-  } finally {
-    client.release();
-  }
-});
-
-// 6. Checkout & QR
-app.post('/api/v1/checkout/reserve', async (req, res) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  let userId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
-
-  if (token) {
+const handleAuthLogin = async (req, res) => {
     try {
-      const decoded = jwt.verify(token, JWT_SECRET);
-      userId = decoded.id;
-    } catch(e) {}
-  }
+        const { email, password } = req.body;
+        const userEmail = email ? email.trim().toLowerCase() : null;
 
-  const { items } = req.body;
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    let totalAmount = 0;
-    const reservedBatch = [];
+        if (!userEmail || !password) {
+            return res.status(400).json({ error: 'Email and password required' });
+        }
 
-    for (const item of items) {
-      const prodRes = await client.query('SELECT selling_price FROM voucher_products WHERE id = $1', [item.voucherProductId]);
-      if (prodRes.rows.length === 0) throw new Error('Product not found');
-      
-      const price = prodRes.rows[0].selling_price;
-      const subtotal = price * item.quantity;
-      totalAmount += subtotal;
+        const result = await pool.query('SELECT * FROM users WHERE LOWER(email) = $1', [userEmail]);
+        if (result.rows.length === 0 || result.rows[0].password_hash !== password) {
+            return res.status(401).json({ error: 'Invalid email or password' });
+        }
 
-      const lockQuery = `
-        SELECT id FROM voucher_inventory
-        WHERE voucher_product_id = $1 AND status = 'AVAILABLE'
-        ORDER BY created_at ASC
-        LIMIT $2
-        FOR UPDATE SKIP LOCKED
-      `;
-      const lockRes = await client.query(lockQuery, [item.voucherProductId, item.quantity]);
-      if (lockRes.rows.length < item.quantity) {
-        throw new Error('Not enough inventory in stock');
-      }
-
-      const invIds = lockRes.rows.map(r => r.id);
-      await client.query(
-        `UPDATE voucher_inventory SET status = 'RESERVED', reserved_at = NOW() WHERE id = ANY($1)`,
-        [invIds]
-      );
-      reservedBatch.push({ productId: item.voucherProductId, price, subtotal, invIds });
+        const user = result.rows[0];
+        return res.json({ success: true, user: { id: user.id, email: user.email, full_name: user.full_name } });
+    } catch (err) {
+        console.error('Login Route Error:', err.message);
+        return res.status(500).json({ error: 'Database error: ' + err.message });
     }
+};
 
-    const orderRes = await client.query(
-      `INSERT INTO orders (user_id, total_amount, final_payable, status)
-       VALUES ($1, $2, $2, 'PENDING') RETURNING id`,
-      [userId, totalAmount]
-    );
-    const orderId = orderRes.rows[0].id;
+app.post('/api/auth/login', handleAuthLogin);
+app.post('/api/login', handleAuthLogin);
+app.post('/api/users/login', handleAuthLogin);
 
-    for (const r of reservedBatch) {
-      const itemRes = await client.query(
-        `INSERT INTO order_items (order_id, voucher_product_id, quantity, unit_price, subtotal)
-         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-        [orderId, r.productId, r.invIds.length, r.price, r.subtotal]
-      );
-      const orderItemId = itemRes.rows[0].id;
-
-      for (const invId of r.invIds) {
-        await client.query(
-          `INSERT INTO order_delivered_vouchers (order_id, order_item_id, inventory_id) VALUES ($1, $2, $3)`,
-          [orderId, orderItemId, invId]
-        );
-      }
+// 5. STORE PRODUCTS & BRANDS
+const handleStoreData = async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT b.id, b.name, b.logo_url, c.id as category_id, c.name as category_name,
+                   COALESCE(json_agg(
+                       json_build_object(
+                           'id', p.id,
+                           'title', p.title,
+                           'denomination', p.denomination,
+                           'selling_price', p.selling_price,
+                           'stock', (SELECT count(*) FROM voucher_inventory vi WHERE vi.voucher_product_id = p.id AND vi.status = 'AVAILABLE')
+                       )
+                   ) FILTER (WHERE p.id IS NOT NULL), '[]') as products
+            FROM brands b
+            LEFT JOIN categories c ON b.category_id = c.id
+            LEFT JOIN voucher_products p ON b.id = p.brand_id
+            GROUP BY b.id, b.name, b.logo_url, c.id, c.name
+        `);
+        return res.json(result.rows);
+    } catch (err) {
+        console.error('Store Data Query Error:', err.message);
+        return res.status(500).json({ error: err.message });
     }
+};
 
-    await client.query('COMMIT');
+app.get('/api/store/brands', handleStoreData);
+app.get('/api/brands', handleStoreData);
+app.get('/api/products', handleStoreData);
 
-    const upiUrl = `upi://pay?pa=${encodeURIComponent(UPI_ID)}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${totalAmount}&cu=INR&tr=${orderId}`;
-    const qrDataUrl = await QRCode.toDataURL(upiUrl, { width: 280, margin: 1 });
-
-    res.json({ orderId, totalAmount, qrDataUrl, upiUrl });
-  } catch (err) {
-    await client.query('ROLLBACK');
-    res.status(400).json({ error: err.message });
-  } finally {
-    client.release();
-  }
+// 6. SPA FALLBACK
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// 7. Payment Verification Webhook (Clean status update)
-app.post('/api/v1/webhooks/payment', async (req, res) => {
-  const { orderId } = req.body;
-  if (!orderId) return res.status(400).json({ error: 'orderId is required' });
-
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const orderRes = await client.query(
-      `SELECT id FROM orders WHERE id = $1 AND status = 'PENDING' FOR UPDATE`,
-      [orderId]
-    );
-    if (orderRes.rows.length === 0) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'Order not found or already processed' });
-    }
-    
-    await client.query(`UPDATE orders SET status = 'COMPLETED' WHERE id = $1`, [orderId]);
-    const odvRes = await client.query(`SELECT inventory_id FROM order_delivered_vouchers WHERE order_id = $1`, [orderId]);
-    const invIds = odvRes.rows.map(r => r.inventory_id);
-    if (invIds.length > 0) {
-      await client.query(`UPDATE voucher_inventory SET status = 'SOLD' WHERE id = ANY($1)`, [invIds]);
-    }
-    await client.query('COMMIT');
-    res.json({ status: 'fulfilled', orderId });
-  } catch (err) {
-    await client.query('ROLLBACK');
-    res.status(500).json({ error: err.message });
-  } finally {
-    client.release();
-  }
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`🚀 All-in-One Voucher Vault Server running on port ${PORT}`);
 });
-
-// 8. Order Status Polling
-app.get('/api/v1/orders/:orderId/status', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT status FROM orders WHERE id = $1', [req.params.orderId]);
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
-    res.json({ status: result.rows[0].status });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 9. Retrieve Decrypted Vouchers
-app.get('/api/v1/orders/:orderId/vouchers', async (req, res) => {
-  try {
-    const query = `
-      SELECT vi.serial_number, vi.expiry_date, vi.encrypted_code, vi.encrypted_pin, vp.title, o.status
-      FROM orders o
-      JOIN order_delivered_vouchers odv ON o.id = odv.order_id
-      JOIN voucher_inventory vi ON odv.inventory_id = vi.id
-      JOIN voucher_products vp ON vi.voucher_product_id = vp.id
-      WHERE o.id = $1;
-    `;
-    const { rows } = await pool.query(query, [req.params.orderId]);
-    
-    if (rows.length === 0) {
-      const checkOrder = await pool.query('SELECT status FROM orders WHERE id = $1', [req.params.orderId]);
-      if (checkOrder.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
-      return res.status(404).json({ error: 'No vouchers assigned to this order yet' });
-    }
-
-    const vouchers = rows.map(r => ({
-      title: r.title,
-      code: decrypt(r.encrypted_code),
-      pin: r.encrypted_pin ? decrypt(r.encrypted_pin) : null,
-      expiryDate: r.expiry_date
-    }));
-    res.json({ vouchers });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Auto-Release Cron
-cron.schedule('* * * * *', async () => {
-  try {
-    await pool.query(`
-      UPDATE voucher_inventory
-      SET status = 'AVAILABLE', reserved_at = NULL
-      WHERE status = 'RESERVED' AND reserved_at < NOW() - INTERVAL '10 minutes';
-    `);
-  } catch (err) {}
-});
-
-app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
